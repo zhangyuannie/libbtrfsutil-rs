@@ -1,18 +1,35 @@
 mod error;
-mod iter;
 mod qgroup;
+mod subvol;
 
 use bitflags::bitflags;
 use std::{
     ffi::CString,
+    num::NonZeroU64,
     os::{raw::c_int, unix::prelude::OsStrExt},
     path::Path,
 };
 
 pub use error::Error;
-pub use iter::SubvolumeIterator;
 pub use qgroup::QgroupInherit;
+pub use subvol::{SubvolumeInfo, SubvolumeIterator};
 pub const FS_TREE_OBJECTID: u64 = 5;
+
+pub fn subvolume_info<P: AsRef<Path>>(
+    path: P,
+    id: Option<NonZeroU64>,
+) -> Result<SubvolumeInfo, Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let cid = id.map_or(0, |i| i.get());
+    let mut out = SubvolumeInfo::new();
+    unsafe {
+        let errcode = ffi::btrfs_util_subvolume_info(cpath.as_ptr(), cid, out.as_ptr());
+        if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+            return Err(errcode.into());
+        }
+    }
+    Ok(out)
+}
 
 bitflags! {
     #[derive(Default)]
