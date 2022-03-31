@@ -215,7 +215,7 @@ impl SubvolumeIterator {
     }
 }
 
-pub fn c_char_ptr_to_path(ptr: *mut std::os::raw::c_char) -> PathBuf {
+fn c_char_ptr_to_path(ptr: *mut std::os::raw::c_char) -> PathBuf {
     let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
     let os_str = OsStr::from_bytes(c_str.to_bytes());
     let ret = PathBuf::from(os_str);
