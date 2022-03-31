@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::Error;
 
+/// Information about a Btrfs subvolume.
 #[derive(Debug, Clone)]
 pub struct SubvolumeInfo(ffi::btrfs_util_subvolume_info);
 
@@ -64,26 +65,42 @@ impl SubvolumeInfo {
         &mut self.0
     }
 
+    /// Returns the ID of this subvolume, unique across the filesystem.
     pub fn id(&self) -> u64 {
         self.0.id
     }
 
+    /// Returns the ID of the subvolume which contains this subvolume, or
+    /// [`None`] for the root subvolume ([`FS_TREE_OBJECTID`]) or orphaned
+    /// subvolumes (i.e., subvolumes which have been deleted but not yet
+    /// cleaned up).
+    ///
+    /// [`FS_TREE_OBJECTID`]: crate::FS_TREE_OBJECTID
     pub fn parent_id(&self) -> Option<NonZeroU64> {
         NonZeroU64::new(self.0.parent_id)
     }
 
+    /// Returns the inode number of the directory containing this subvolume in
+    /// the parent subvolume, or zero for the root subvolume
+    /// ([`FS_TREE_OBJECTID`]) or orphaned subvolumes.
+    ///
+    /// [`FS_TREE_OBJECTID`]: crate::FS_TREE_OBJECTID
     pub fn dir_id(&self) -> Option<NonZeroU64> {
         NonZeroU64::new(self.0.dir_id)
     }
 
+    /// Returns the on-disk root item flags
     pub fn flags(&self) -> u64 {
         self.0.flags
     }
 
+    /// Returns the UUID of this subvolume.
     pub fn uuid(&self) -> Uuid {
         Uuid::from_bytes(self.0.uuid)
     }
 
+    /// Returns the UUID of the subvolume this subvolume is a snapshot of, or
+    /// [`None`] if this subvolume is not a snapshot.
     pub fn parent_uuid(&self) -> Option<Uuid> {
         let ret = Uuid::from_bytes(self.0.parent_uuid);
         if ret.is_nil() {
@@ -93,6 +110,10 @@ impl SubvolumeInfo {
         }
     }
 
+    /// Returns the UUID of the subvolume this subvolume was received from, or
+    /// [`None`] if this subvolume was not received.
+    ///
+    /// This field is set manually by userspace after a subvolume is received.
     pub fn received_uuid(&self) -> Option<Uuid> {
         let ret = Uuid::from_bytes(self.0.received_uuid);
         if ret.is_nil() {
@@ -102,22 +123,34 @@ impl SubvolumeInfo {
         }
     }
 
+    /// Returns the transaction ID of the subvolume root.
     pub fn generation(&self) -> u64 {
         self.0.generation
     }
 
+    /// Returns the transaction ID when an inode in this subvolume was last
+    /// changed.
     pub fn ctransid(&self) -> u64 {
         self.0.ctransid
     }
 
+    /// Returns the transaction ID when this subvolume was created.
     pub fn otransid(&self) -> u64 {
         self.0.otransid
     }
 
+    /// Returns the transaction ID of the sent subvolume this subvolume was
+    /// received from, or [`None`] if this subvolume was not received.
+    ///
+    /// This field is set manually by userspace after a subvolume is received.
     pub fn stransid(&self) -> Option<NonZeroU64> {
         NonZeroU64::new(self.0.stransid)
     }
 
+    /// Returns the transaction ID when this subvolume was received, or [`None`]
+    /// if this subvolume was not received.
+    ///
+    /// This field is set manually by userspace after a subvolume is received.
     pub fn rtransid(&self) -> Option<NonZeroU64> {
         NonZeroU64::new(self.0.rtransid)
     }
@@ -127,7 +160,9 @@ impl SubvolumeInfo {
         self.0.ctime.tv_sec
     }
 
-    /// Returns the last change time, in nanoseconds since `ctime`.
+    /// Returns the last change time, in nanoseconds since [`ctime`].
+    ///
+    /// [`ctime`]: Self::ctime
     pub fn ctime_nsec(&self) -> i64 {
         self.0.ctime.tv_nsec
     }
@@ -137,39 +172,63 @@ impl SubvolumeInfo {
         self.0.otime.tv_sec
     }
 
-    /// Returns the creation time, in nanoseconds since `otime`.
+    /// Returns the creation time, in nanoseconds since [`otime`].
+    ///
+    /// [`otime`]: Self::otime
     pub fn otime_nsec(&self) -> i64 {
         self.0.otime.tv_nsec
     }
 
+    /// Returns the send time, in seconds since Unix Epoch.
+    ///
+    /// Not well-defined, usually [`None`] unless it was set otherwise. This
+    /// field is set manually by userspace after a subvolume is received.
     pub fn stime(&self) -> Option<NonZeroI64> {
         NonZeroI64::new(self.0.stime.tv_sec)
     }
 
+    /// Returns the send time, in nanoseconds since [`stime`].
+    ///
+    /// Not well-defined, usually [`None`] unless it was set otherwise. This
+    /// field is set manually by userspace after a subvolume is received.
+    ///
+    /// [`stime`]: Self::stime
     pub fn stime_nsec(&self) -> Option<NonZeroI64> {
         NonZeroI64::new(self.0.stime.tv_nsec)
     }
 
-    /// Returns the receipt time, in seconds since Unix Epoch.
+    /// Returns the time when this subvolume was received in seconds since Unix
+    /// Epoch, or [`None`] if this subvolume was not received.
+    ///
+    /// This field is set manually by userspace after a subvolume is received.
     pub fn rtime(&self) -> Option<NonZeroI64> {
         NonZeroI64::new(self.0.rtime.tv_sec)
     }
 
-    /// Returns the receipt time, in nanoseconds since `rtime`.
+    /// Returns the time when this subvolume was received in nanoseconds since
+    /// [`rtime`], or [`None`] if this subvolume was not received.
+    ///
+    /// This field is set manually by userspace after a subvolume is received.
+    ///
+    /// [`rtime`]: Self::rtime
     pub fn rtime_nsec(&self) -> Option<NonZeroI64> {
         NonZeroI64::new(self.0.rtime.tv_nsec)
     }
 
-    /// Returns the creation time
+    /// Returns the creation time.
     pub fn created(&self) -> SystemTime {
         Timespec(self.0.otime).try_into().unwrap()
     }
 
-    /// Returns the last change time
+    /// Returns the last change time.
     pub fn changed(&self) -> SystemTime {
         Timespec(self.0.ctime).try_into().unwrap()
     }
 
+    /// Returns the time when this subvolume was received, or [`None`] if this
+    /// subvolume was not received.
+    ///
+    /// This field is set manually by userspace after a subvolume is received.
     pub fn received(&self) -> Option<SystemTime> {
         if self.0.rtime.tv_sec == 0 && self.0.rtime.tv_nsec == 0 {
             None

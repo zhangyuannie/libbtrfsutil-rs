@@ -15,6 +15,7 @@ pub use qgroup::QgroupInherit;
 pub use subvol::*;
 pub const FS_TREE_OBJECTID: u64 = 5;
 
+/// Gets information about a subvolume.
 pub fn subvolume_info<P: AsRef<Path>>(
     path: P,
     id: Option<NonZeroU64>,
@@ -38,7 +39,7 @@ bitflags! {
     }
 }
 
-/// Delete a subvolume or snapshot
+/// Deletes a subvolume or snapshot.
 pub fn delete_subvolume<P: AsRef<Path>>(path: P, flags: DeleteSubvolumeFlags) -> Result<(), Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let cflags = flags.bits();
@@ -59,7 +60,7 @@ bitflags! {
     }
 }
 
-/// Create a new snapshot from a source subvolume
+/// Creates a new snapshot from a source subvolume.
 pub fn create_snapshot<P: AsRef<Path>>(
     source: P,
     path: P,
