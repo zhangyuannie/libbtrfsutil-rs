@@ -1,9 +1,16 @@
 use std::{
+    ffi::{CString, OsStr},
     num::{NonZeroI64, NonZeroU64, TryFromIntError},
+    os::{raw::c_int, unix::prelude::OsStrExt},
+    path::{Path, PathBuf},
+    ptr,
     time::{Duration, SystemTime},
 };
 
+use bitflags::bitflags;
 use uuid::Uuid;
+
+use crate::Error;
 
 #[derive(Debug, Clone)]
 pub struct SubvolumeInfo(ffi::btrfs_util_subvolume_info);
@@ -180,11 +187,60 @@ impl Default for SubvolumeInfo {
 
 pub struct SubvolumeIterator(*mut ffi::btrfs_util_subvolume_iterator);
 
+bitflags! {
+    #[derive(Default)]
+    pub struct SubvolumeIteratorFlags: c_int {
+        const POST_ORDER = ffi::BTRFS_UTIL_SUBVOLUME_ITERATOR_POST_ORDER as c_int;
+    }
+}
+
+impl SubvolumeIterator {
+    pub fn new<P: AsRef<Path>>(
+        path: P,
+        top: Option<NonZeroU64>,
+        flags: SubvolumeIteratorFlags,
+    ) -> Result<Self, Error> {
+        let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+        let ctop = top.map_or(0, |i| i.get());
+        let cflags = flags.bits();
+        let mut iter: *mut ffi::btrfs_util_subvolume_iterator = ptr::null_mut();
+        unsafe {
+            let errcode =
+                ffi::btrfs_util_create_subvolume_iterator(cpath.as_ptr(), ctop, cflags, &mut iter);
+            if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+                return Err(errcode.into());
+            }
+        }
+        Ok(SubvolumeIterator(iter))
+    }
+}
+
+pub fn c_char_ptr_to_path(ptr: *mut std::os::raw::c_char) -> PathBuf {
+    let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
+    let os_str = OsStr::from_bytes(c_str.to_bytes());
+    let ret = PathBuf::from(os_str);
+    unsafe {
+        libc::free(ptr as *mut libc::c_void);
+    }
+    ret
+}
+
 impl Iterator for SubvolumeIterator {
-    type Item = SubvolumeInfo;
+    type Item = Result<(PathBuf, NonZeroU64), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        let mut path_ptr: *mut std::os::raw::c_char = std::ptr::null_mut();
+        let mut id: u64 = 0;
+        let errcode =
+            unsafe { ffi::btrfs_util_subvolume_iterator_next(self.0, &mut path_ptr, &mut id) };
+        match errcode {
+            ffi::btrfs_util_error_BTRFS_UTIL_OK => {
+                let path = c_char_ptr_to_path(path_ptr);
+                Some(Ok((path, NonZeroU64::new(id).unwrap())))
+            }
+            ffi::btrfs_util_error_BTRFS_UTIL_ERROR_STOP_ITERATION => None,
+            _ => Some(Err(errcode.into())),
+        }
     }
 }
 
@@ -192,6 +248,50 @@ impl Drop for SubvolumeIterator {
     fn drop(&mut self) {
         unsafe {
             ffi::btrfs_util_destroy_subvolume_iterator(self.0);
+        }
+    }
+}
+
+impl From<SubvolumeInfoIterator> for SubvolumeIterator {
+    fn from(iter: SubvolumeInfoIterator) -> Self {
+        iter.0
+    }
+}
+
+impl From<SubvolumeIterator> for SubvolumeInfoIterator {
+    fn from(iter: SubvolumeIterator) -> Self {
+        Self(iter)
+    }
+}
+
+pub struct SubvolumeInfoIterator(SubvolumeIterator);
+
+impl SubvolumeInfoIterator {
+    pub fn new<P: AsRef<Path>>(
+        path: P,
+        top: Option<NonZeroU64>,
+        flags: SubvolumeIteratorFlags,
+    ) -> Result<Self, Error> {
+        SubvolumeIterator::new(path, top, flags).map(|iter| Self(iter))
+    }
+}
+
+impl Iterator for SubvolumeInfoIterator {
+    type Item = Result<(PathBuf, SubvolumeInfo), Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut path_ptr: *mut std::os::raw::c_char = std::ptr::null_mut();
+        let mut info = SubvolumeInfo::new();
+        let errcode = unsafe {
+            ffi::btrfs_util_subvolume_iterator_next_info(self.0 .0, &mut path_ptr, &mut info.0)
+        };
+        match errcode {
+            ffi::btrfs_util_error_BTRFS_UTIL_OK => {
+                let path = c_char_ptr_to_path(path_ptr);
+                Some(Ok((path, info)))
+            }
+            ffi::btrfs_util_error_BTRFS_UTIL_ERROR_STOP_ITERATION => None,
+            _ => Some(Err(errcode.into())),
         }
     }
 }

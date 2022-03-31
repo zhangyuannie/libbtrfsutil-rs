@@ -10,3 +10,4 @@ license = "MIT"
 bitflags = "1.0"
 uuid = "0.8"
 ffi = {package = "btrfsutil-sys", version = "1.2.1"}
+libc = "0.2"

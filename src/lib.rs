@@ -12,7 +12,7 @@ use std::{
 
 pub use error::Error;
 pub use qgroup::QgroupInherit;
-pub use subvol::{SubvolumeInfo, SubvolumeIterator};
+pub use subvol::*;
 pub const FS_TREE_OBJECTID: u64 = 5;
 
 pub fn subvolume_info<P: AsRef<Path>>(
