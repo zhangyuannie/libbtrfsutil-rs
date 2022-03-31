@@ -54,6 +54,34 @@ pub fn delete_subvolume<P: AsRef<Path>>(path: P, flags: DeleteSubvolumeFlags) ->
 
 bitflags! {
     #[derive(Default)]
+    pub struct CreateSubvolumeFlags: c_int {}
+}
+
+/// Create a new subvolume.
+pub fn create_subvolume<P: AsRef<Path>>(
+    path: P,
+    flags: CreateSubvolumeFlags,
+    qgroup: Option<QgroupInherit>,
+) -> Result<(), Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let cflags = flags.bits();
+    let cqgroup: *mut ffi::btrfs_util_qgroup_inherit = if let Some(qg) = qgroup {
+        qg.as_ptr()
+    } else {
+        std::ptr::null_mut()
+    };
+    let errcode = unsafe {
+        ffi::btrfs_util_create_subvolume(cpath.as_ptr(), cflags, std::ptr::null_mut(), cqgroup)
+    };
+    if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        Err(errcode.into())
+    } else {
+        Ok(())
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
     pub struct CreateSnapshotFlags: c_int {
         const READ_ONLY	= ffi::BTRFS_UTIL_CREATE_SNAPSHOT_READ_ONLY as c_int;
         const RECURSIVE = ffi::BTRFS_UTIL_CREATE_SNAPSHOT_RECURSIVE as c_int;
