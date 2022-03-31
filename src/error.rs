@@ -43,11 +43,6 @@ impl Error {
     pub const INO_LOOKUP_USER_FAILED: Error =
         Error(ffi::btrfs_util_error_BTRFS_UTIL_ERROR_INO_LOOKUP_USER_FAILED);
     pub const FS_INFO_FAILED: Error = Error(ffi::btrfs_util_error_BTRFS_UTIL_ERROR_FS_INFO_FAILED);
-
-    #[inline]
-    pub fn is_unknown(&self) -> bool {
-        self.0 > Self::FS_INFO_FAILED.0
-    }
 }
 
 impl From<u32> for Error {
