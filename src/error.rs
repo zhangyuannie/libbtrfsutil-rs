@@ -1,3 +1,5 @@
+use std::{ffi::CStr, fmt::Display, str};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Error(u32);
 
@@ -54,5 +56,48 @@ impl From<u32> for Error {
 impl From<Error> for u32 {
     fn from(err: Error) -> Self {
         err.0
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str_ptr = unsafe { ffi::btrfs_util_strerror(self.0) };
+        if str_ptr.is_null() {
+            write!(f, "unknown libbtrfsutil error code: {}", self.0)
+        } else {
+            let slice = unsafe { CStr::from_ptr(str_ptr).to_bytes() };
+            let slice = str::from_utf8(slice).unwrap();
+            let first_char = slice.chars().next().unwrap().to_ascii_lowercase();
+            write!(f, "{}{}", first_char, &slice[1..])
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::CStr;
+
+    use crate::Error;
+
+    #[test]
+    fn test_display() {
+        unsafe {
+            let err = Error::from(4);
+            let received = err.to_string();
+            let expected_ptr = ffi::btrfs_util_strerror(4);
+            let expected = CStr::from_ptr(expected_ptr).to_str().unwrap().to_owned();
+            let expected_lower = expected.to_ascii_lowercase();
+            assert_eq!(received[..1], expected_lower[..1]);
+            assert_eq!(received[1..], expected[1..]);
+        }
+    }
+
+    #[test]
+    fn test_display_unknown() {
+        let err = Error::from(99);
+        let received = err.to_string();
+        assert_eq!(received, "unknown libbtrfsutil error code: 99");
     }
 }
