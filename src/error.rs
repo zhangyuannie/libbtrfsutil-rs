@@ -1,7 +1,7 @@
 use std::{ffi::CStr, fmt::Display, str};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Error(u32);
+pub struct Error(ffi::btrfs_util_error);
 
 impl Error {
     pub const OK: Error = Error(ffi::btrfs_util_error_BTRFS_UTIL_OK);

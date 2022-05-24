@@ -15,6 +15,41 @@ pub use qgroup::QgroupInherit;
 pub use subvol::*;
 pub const FS_TREE_OBJECTID: u64 = 5;
 
+/// Forces a sync on a Btrfs filesystem containing the `Path`.
+pub fn sync<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let errcode = unsafe { ffi::btrfs_util_sync(cpath.as_ptr()) };
+    if errcode == ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        Ok(())
+    } else {
+        Err(errcode.into())
+    }
+}
+
+/// Returns whether the `Path` is a Btrfs subvolume.
+pub fn is_subvolume<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let errcode = unsafe { ffi::btrfs_util_is_subvolume(cpath.as_ptr()) };
+    match errcode {
+        ffi::btrfs_util_error_BTRFS_UTIL_OK => Ok(true),
+        ffi::btrfs_util_error_BTRFS_UTIL_ERROR_NOT_SUBVOLUME
+        | ffi::btrfs_util_error_BTRFS_UTIL_ERROR_NOT_BTRFS => Ok(false),
+        _ => Err(errcode.into()),
+    }
+}
+
+/// Gets the ID of the subvolume containing the `Path`.
+pub fn subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let mut ret: u64 = 0;
+    let errcode = unsafe { ffi::btrfs_util_subvolume_id(cpath.as_ptr(), &mut ret) };
+    if errcode == ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        Ok(ret)
+    } else {
+        Err(errcode.into())
+    }
+}
+
 /// Gets information about a subvolume.
 pub fn subvolume_info<P: AsRef<Path>>(
     path: P,
@@ -30,6 +65,19 @@ pub fn subvolume_info<P: AsRef<Path>>(
         }
     }
     Ok(out)
+}
+
+/// Returns whether a subvolume is read-only.
+pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let mut ret: bool = false;
+
+    let errcode = unsafe { ffi::btrfs_util_get_subvolume_read_only(cpath.as_ptr(), &mut ret) };
+    if errcode == ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        Ok(ret)
+    } else {
+        Err(errcode.into())
+    }
 }
 
 bitflags! {
@@ -57,7 +105,7 @@ bitflags! {
     pub struct CreateSubvolumeFlags: c_int {}
 }
 
-/// Create a new subvolume.
+/// Creates a new subvolume.
 pub fn create_subvolume<P: AsRef<Path>>(
     path: P,
     flags: CreateSubvolumeFlags,
