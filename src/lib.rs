@@ -137,9 +137,9 @@ bitflags! {
 }
 
 /// Creates a new snapshot from a source subvolume.
-pub fn create_snapshot<P: AsRef<Path>>(
+pub fn create_snapshot<P: AsRef<Path>, Q: AsRef<Path>>(
     source: P,
-    path: P,
+    path: Q,
     flags: CreateSnapshotFlags,
     qgroup: Option<QgroupInherit>,
 ) -> Result<(), Error> {
