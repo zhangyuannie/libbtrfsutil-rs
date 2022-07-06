@@ -1,10 +1,7 @@
-use std::path::Path;
-
 use libbtrfsutil::{SubvolumeInfoIterator, SubvolumeIteratorFlags};
 
 fn main() {
-    let iter = SubvolumeInfoIterator::new(Path::new("/"), None, SubvolumeIteratorFlags::default())
-        .unwrap();
+    let iter = SubvolumeInfoIterator::new("/", None, SubvolumeIteratorFlags::default()).unwrap();
     for subvol in iter {
         let (path, info) = subvol.unwrap();
         println!(

@@ -3,6 +3,7 @@ name = "libbtrfsutil-sys"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+description = "FFI bindings to libbtrfsutil"
 repository = "https://github.com/zhangyuannie/libbtrfsutil-rs"
 links = "btrfsutil"
 
