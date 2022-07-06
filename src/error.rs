@@ -47,13 +47,13 @@ impl Error {
     pub const FS_INFO_FAILED: Error = Error(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_FS_INFO_FAILED);
 }
 
-impl From<u32> for Error {
-    fn from(errcode: u32) -> Self {
+impl From<ffi::btrfs_util_error::Type> for Error {
+    fn from(errcode: ffi::btrfs_util_error::Type) -> Self {
         Error(errcode)
     }
 }
 
-impl From<Error> for u32 {
+impl From<Error> for ffi::btrfs_util_error::Type {
     fn from(err: Error) -> Self {
         err.0
     }
