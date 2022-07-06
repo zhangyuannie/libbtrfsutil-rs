@@ -19,7 +19,7 @@ pub const FS_TREE_OBJECTID: u64 = 5;
 pub fn sync<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let errcode = unsafe { ffi::btrfs_util_sync(cpath.as_ptr()) };
-    if errcode == ffi::btrfs_util_error_BTRFS_UTIL_OK {
+    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Ok(())
     } else {
         Err(errcode.into())
@@ -31,9 +31,9 @@ pub fn is_subvolume<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let errcode = unsafe { ffi::btrfs_util_is_subvolume(cpath.as_ptr()) };
     match errcode {
-        ffi::btrfs_util_error_BTRFS_UTIL_OK => Ok(true),
-        ffi::btrfs_util_error_BTRFS_UTIL_ERROR_NOT_SUBVOLUME
-        | ffi::btrfs_util_error_BTRFS_UTIL_ERROR_NOT_BTRFS => Ok(false),
+        ffi::btrfs_util_error::BTRFS_UTIL_OK => Ok(true),
+        ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_SUBVOLUME
+        | ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_BTRFS => Ok(false),
         _ => Err(errcode.into()),
     }
 }
@@ -43,7 +43,7 @@ pub fn subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let mut ret: u64 = 0;
     let errcode = unsafe { ffi::btrfs_util_subvolume_id(cpath.as_ptr(), &mut ret) };
-    if errcode == ffi::btrfs_util_error_BTRFS_UTIL_OK {
+    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Ok(ret)
     } else {
         Err(errcode.into())
@@ -60,7 +60,7 @@ pub fn subvolume_info<P: AsRef<Path>>(
     let mut out = SubvolumeInfo::new();
     unsafe {
         let errcode = ffi::btrfs_util_subvolume_info(cpath.as_ptr(), cid, out.as_ptr());
-        if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
             return Err(errcode.into());
         }
     }
@@ -73,7 +73,7 @@ pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let mut ret: bool = false;
 
     let errcode = unsafe { ffi::btrfs_util_get_subvolume_read_only(cpath.as_ptr(), &mut ret) };
-    if errcode == ffi::btrfs_util_error_BTRFS_UTIL_OK {
+    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Ok(ret)
     } else {
         Err(errcode.into())
@@ -93,7 +93,7 @@ pub fn delete_subvolume<P: AsRef<Path>>(path: P, flags: DeleteSubvolumeFlags) ->
     let cflags = flags.bits();
     unsafe {
         let errcode = ffi::btrfs_util_delete_subvolume(cpath.as_ptr(), cflags);
-        if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
             return Err(errcode.into());
         }
     }
@@ -121,7 +121,7 @@ pub fn create_subvolume<P: AsRef<Path>>(
     let errcode = unsafe {
         ffi::btrfs_util_create_subvolume(cpath.as_ptr(), cflags, std::ptr::null_mut(), cqgroup)
     };
-    if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+    if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Err(errcode.into())
     } else {
         Ok(())
@@ -160,7 +160,7 @@ pub fn create_snapshot<P: AsRef<Path>, Q: AsRef<Path>>(
             unused,
             cqgroup,
         );
-        if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
             return Err(errcode.into());
         }
     }

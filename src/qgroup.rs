@@ -1,7 +1,5 @@
 use std::{ptr, slice};
 
-use ffi::size_t;
-
 use crate::Error;
 
 /// qgroup inheritance specifier.
@@ -12,7 +10,7 @@ impl QgroupInherit {
         let mut ret: *mut ffi::btrfs_util_qgroup_inherit = ptr::null_mut();
 
         let errcode = unsafe { ffi::btrfs_util_create_qgroup_inherit(0, &mut ret) };
-        if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
             Err(errcode.into())
         } else {
             Ok(QgroupInherit(ret))
@@ -25,7 +23,7 @@ impl QgroupInherit {
 
         let errcode = unsafe { ffi::btrfs_util_qgroup_inherit_add_group(&mut ptr, qgroup_id) };
 
-        if errcode != ffi::btrfs_util_error_BTRFS_UTIL_OK {
+        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
             Err(errcode.into())
         } else {
             self.0 = ptr;
@@ -37,10 +35,10 @@ impl QgroupInherit {
     pub fn groups(&self) -> &[u64] {
         let self_ptr = self.as_ptr();
         let mut ret_ptr: *const u64 = ptr::null();
-        let mut ret_size: size_t = 0;
+        let mut ret_size: usize = 0;
         unsafe {
             ffi::btrfs_util_qgroup_inherit_get_groups(self_ptr, &mut ret_ptr, &mut ret_size);
-            slice::from_raw_parts(ret_ptr, ret_size as usize)
+            slice::from_raw_parts(ret_ptr, ret_size)
         }
     }
 

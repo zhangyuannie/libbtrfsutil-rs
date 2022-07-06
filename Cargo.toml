@@ -7,10 +7,15 @@ description = "libbtrfsutil bindings"
 readme = "README.md"
 repository = "https://github.com/zhangyuannie/libbtrfsutil-rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["libbtrfsutil-sys"]
 
 [dependencies]
 bitflags = "1"
 uuid = "1"
-ffi = {package = "btrfsutil-sys", version = "1.2.1"}
 libc = "0.2"
+
+[dependencies.ffi]
+package = "libbtrfsutil-sys"
+path = "libbtrfsutil-sys"
+version = "0.1.0"
