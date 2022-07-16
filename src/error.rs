@@ -24,15 +24,15 @@ impl From<Errno> for io::Error {
 pub struct ErrorKind(ffi::btrfs_util_error::Type);
 
 impl ErrorKind {
-    // pub const OK: ErrorKind = ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_OK);
-    // pub const STOP_ITERATION: ErrorKind =
-    //     ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION);
+    pub const OK: ErrorKind = ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_OK);
+    pub const STOP_ITERATION: ErrorKind =
+        ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION);
     pub const NO_MEMORY: ErrorKind = ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NO_MEMORY);
     pub const INVALID_ARGUMENT: ErrorKind =
         ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_INVALID_ARGUMENT);
-    // pub const NOT_BTRFS: ErrorKind = ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_BTRFS);
-    // pub const NOT_SUBVOLUME: ErrorKind =
-    //     ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_SUBVOLUME);
+    pub const NOT_BTRFS: ErrorKind = ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_BTRFS);
+    pub const NOT_SUBVOLUME: ErrorKind =
+        ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_SUBVOLUME);
     pub const SUBVOLUME_NOT_FOUND: ErrorKind =
         ErrorKind(ffi::btrfs_util_error::BTRFS_UTIL_ERROR_SUBVOLUME_NOT_FOUND);
     pub const OPEN_FAILED: ErrorKind =
