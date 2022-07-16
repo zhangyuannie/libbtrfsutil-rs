@@ -267,7 +267,7 @@ impl SubvolumeIterator {
             let errcode =
                 ffi::btrfs_util_create_subvolume_iterator(cpath.as_ptr(), ctop, cflags, &mut iter);
             if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-                return Err(errcode.into());
+                return Err(Error::new(errcode));
             }
         }
         Ok(SubvolumeIterator(iter))
@@ -298,7 +298,7 @@ impl Iterator for SubvolumeIterator {
                 Some(Ok((path, NonZeroU64::new(id).unwrap())))
             }
             ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION => None,
-            _ => Some(Err(errcode.into())),
+            _ => Some(Err(Error::new(errcode))),
         }
     }
 }
@@ -350,7 +350,7 @@ impl Iterator for SubvolumeInfoIterator {
                 Some(Ok((path, info)))
             }
             ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION => None,
-            _ => Some(Err(errcode.into())),
+            _ => Some(Err(Error::new(errcode))),
         }
     }
 }

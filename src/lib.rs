@@ -22,7 +22,7 @@ pub fn sync<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Ok(())
     } else {
-        Err(errcode.into())
+        Err(Error::new(errcode))
     }
 }
 
@@ -34,7 +34,7 @@ pub fn is_subvolume<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
         ffi::btrfs_util_error::BTRFS_UTIL_OK => Ok(true),
         ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_SUBVOLUME
         | ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_BTRFS => Ok(false),
-        _ => Err(errcode.into()),
+        _ => Err(Error::new(errcode)),
     }
 }
 
@@ -46,7 +46,7 @@ pub fn subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Ok(ret)
     } else {
-        Err(errcode.into())
+        Err(Error::new(errcode))
     }
 }
 
@@ -61,7 +61,7 @@ pub fn subvolume_info<P: AsRef<Path>>(
     unsafe {
         let errcode = ffi::btrfs_util_subvolume_info(cpath.as_ptr(), cid, out.as_ptr());
         if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-            return Err(errcode.into());
+            return Err(Error::new(errcode));
         }
     }
     Ok(out)
@@ -76,7 +76,7 @@ pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Ok(ret)
     } else {
-        Err(errcode.into())
+        Err(Error::new(errcode))
     }
 }
 
@@ -94,7 +94,7 @@ pub fn delete_subvolume<P: AsRef<Path>>(path: P, flags: DeleteSubvolumeFlags) ->
     unsafe {
         let errcode = ffi::btrfs_util_delete_subvolume(cpath.as_ptr(), cflags);
         if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-            return Err(errcode.into());
+            return Err(Error::new(errcode));
         }
     }
     Ok(())
@@ -122,7 +122,7 @@ pub fn create_subvolume<P: AsRef<Path>>(
         ffi::btrfs_util_create_subvolume(cpath.as_ptr(), cflags, std::ptr::null_mut(), cqgroup)
     };
     if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-        Err(errcode.into())
+        Err(Error::new(errcode))
     } else {
         Ok(())
     }
@@ -161,7 +161,7 @@ pub fn create_snapshot<P: AsRef<Path>, Q: AsRef<Path>>(
             cqgroup,
         );
         if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-            return Err(errcode.into());
+            return Err(Error::new(errcode));
         }
     }
     Ok(())
