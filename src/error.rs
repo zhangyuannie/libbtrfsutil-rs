@@ -100,14 +100,17 @@ impl Error {
         }
     }
 
+    /// Returns the corresponding [`ErrorKind`] for this error.
     pub fn kind(&self) -> ErrorKind {
         self.kind
     }
 
+    /// Returns the underlying errno.
     pub fn errno(&self) -> i32 {
         self.errno.0
     }
 
+    /// Returns the corresponding [`io::Error`] for the underlying errno.
     pub fn os_error(&self) -> io::Error {
         io::Error::from_raw_os_error(self.errno.0)
     }
@@ -128,7 +131,7 @@ impl Display for Error {
 }
 
 impl std::error::Error for Error {
-    fn cause(&self) -> Option<&dyn std::error::Error> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.errno)
     }
 }
