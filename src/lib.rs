@@ -5,7 +5,6 @@ mod subvol;
 use bitflags::bitflags;
 use std::{
     ffi::CString,
-    num::NonZeroU64,
     os::{raw::c_int, unix::prelude::OsStrExt},
     path::Path,
 };
@@ -15,7 +14,7 @@ pub use qgroup::QgroupInherit;
 pub use subvol::*;
 pub const FS_TREE_OBJECTID: u64 = 5;
 
-/// Forces a sync on a Btrfs filesystem containing the `Path`.
+/// Forces a sync on a Btrfs filesystem containing the `path`.
 pub fn sync<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let errcode = unsafe { ffi::btrfs_util_sync(cpath.as_ptr()) };
@@ -26,7 +25,7 @@ pub fn sync<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     }
 }
 
-/// Returns whether the `Path` is a Btrfs subvolume.
+/// Returns whether the given `path` is a Btrfs subvolume.
 pub fn is_subvolume<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let errcode = unsafe { ffi::btrfs_util_is_subvolume(cpath.as_ptr()) };
@@ -38,7 +37,7 @@ pub fn is_subvolume<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     }
 }
 
-/// Gets the ID of the subvolume containing the `Path`.
+/// Gets the ID of the subvolume containing the `path`.
 pub fn subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let mut ret: u64 = 0;
@@ -50,16 +49,14 @@ pub fn subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     }
 }
 
-/// Gets information about a subvolume.
-pub fn subvolume_info<P: AsRef<Path>>(
-    path: P,
-    id: Option<NonZeroU64>,
-) -> Result<SubvolumeInfo, Error> {
+/// Gets information about the subvolume with the given `id` on the filesystem containing the `path`.
+///
+/// This requires appropriate privilege (`CAP_SYS_ADMIN`).
+pub fn subvolume_info_with_id<P: AsRef<Path>>(path: P, id: u64) -> Result<SubvolumeInfo, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
-    let cid = id.map_or(0, |i| i.get());
     let mut out = SubvolumeInfo::new();
     unsafe {
-        let errcode = ffi::btrfs_util_subvolume_info(cpath.as_ptr(), cid, out.as_ptr());
+        let errcode = ffi::btrfs_util_subvolume_info(cpath.as_ptr(), id, out.as_ptr());
         if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
             return Err(Error::new(errcode));
         }
@@ -67,6 +64,13 @@ pub fn subvolume_info<P: AsRef<Path>>(
     Ok(out)
 }
 
+/// Gets information about the subvolume at the given `path`.
+///
+/// This requires appropriate privilege (`CAP_SYS_ADMIN`) unless the kernel supports
+/// `BTRFS_IOC_GET_SUBVOL_INFO` (kernel >= 4.18).
+pub fn subvolume_info<P: AsRef<Path>>(path: P) -> Result<SubvolumeInfo, Error> {
+    subvolume_info_with_id(path, 0)
+}
 /// Returns whether a subvolume is read-only.
 pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();

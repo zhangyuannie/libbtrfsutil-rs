@@ -28,7 +28,7 @@ fn test_subvolume_info() {
         .call()
         .unwrap();
 
-    let root_info = subvolume_info(device.mountpoint().unwrap(), None).unwrap();
+    let root_info = subvolume_info(device.mountpoint().unwrap()).unwrap();
     assert_eq!(root_info.id(), 5);
     assert_eq!(root_info.parent_id(), None);
     assert_eq!(root_info.dir_id(), None);
@@ -63,7 +63,7 @@ fn test_subvolume_info() {
     );
     assert_eq!(root_info.received(), None);
 
-    let subvol_info = subvolume_info(subvol_path, None).unwrap();
+    let subvol_info = subvolume_info(subvol_path).unwrap();
     assert_eq!(subvol_info.id(), 256);
     assert_eq!(subvol_info.parent_id(), NonZeroU64::new(5));
     assert_eq!(subvol_info.dir_id(), NonZeroU64::new(256));
@@ -98,7 +98,7 @@ fn test_subvolume_info() {
     );
     assert_eq!(subvol_info.received(), None);
 
-    let snapshot_info = subvolume_info(snapshot_path, None).unwrap();
+    let snapshot_info = subvolume_info(snapshot_path).unwrap();
     assert_eq!(snapshot_info.parent_id(), NonZeroU64::new(5));
     assert_eq!(snapshot_info.dir_id(), NonZeroU64::new(256));
     assert_eq!(snapshot_info.parent_uuid(), Some(subvol_info.uuid()));
