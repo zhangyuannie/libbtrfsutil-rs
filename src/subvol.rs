@@ -1,6 +1,6 @@
 use std::{
     ffi::{CString, OsStr},
-    num::{NonZeroI64, NonZeroU64, TryFromIntError},
+    num::{NonZeroI64, NonZeroU64},
     os::{raw::c_int, unix::prelude::OsStrExt},
     path::{Path, PathBuf},
     ptr,
@@ -17,12 +17,10 @@ use crate::Error;
 pub struct SubvolumeInfo(ffi::btrfs_util_subvolume_info);
 
 struct Timespec(ffi::timespec);
-impl TryInto<SystemTime> for Timespec {
-    type Error = TryFromIntError;
-
-    fn try_into(self) -> Result<SystemTime, Self::Error> {
-        let duration = Duration::new(self.0.tv_sec.try_into()?, self.0.tv_nsec.try_into()?);
-        Ok(SystemTime::UNIX_EPOCH + duration)
+impl From<Timespec> for SystemTime {
+    fn from(ts: Timespec) -> Self {
+        let duration = Duration::new(ts.0.tv_sec as u64, ts.0.tv_nsec as u32);
+        SystemTime::UNIX_EPOCH + duration
     }
 }
 
@@ -217,12 +215,12 @@ impl SubvolumeInfo {
 
     /// Returns the creation time.
     pub fn created(&self) -> SystemTime {
-        Timespec(self.0.otime).try_into().unwrap()
+        Timespec(self.0.otime).into()
     }
 
     /// Returns the last change time.
     pub fn changed(&self) -> SystemTime {
-        Timespec(self.0.ctime).try_into().unwrap()
+        Timespec(self.0.ctime).into()
     }
 
     /// Returns the time when this subvolume was received, or [`None`] if this
@@ -233,7 +231,7 @@ impl SubvolumeInfo {
         if self.0.rtime.tv_sec == 0 && self.0.rtime.tv_nsec == 0 {
             None
         } else {
-            Some(Timespec(self.0.ctime).try_into().unwrap())
+            Some(Timespec(self.0.ctime).into())
         }
     }
 }
