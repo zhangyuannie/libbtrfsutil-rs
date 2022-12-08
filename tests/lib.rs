@@ -4,6 +4,7 @@ use common::setup;
 use libbtrfsutil::subvolume_info;
 use std::{
     num::NonZeroU64,
+    path::PathBuf,
     process::Command,
     time::{Duration, SystemTime},
 };
@@ -102,4 +103,18 @@ fn test_subvolume_info() {
     assert_eq!(snapshot_info.parent_id(), NonZeroU64::new(5));
     assert_eq!(snapshot_info.dir_id(), NonZeroU64::new(256));
     assert_eq!(snapshot_info.parent_uuid(), Some(subvol_info.uuid()));
+}
+
+#[test]
+fn test_subvolume_path() {
+    let device = setup();
+    let subvol_path = device.mountpoint().unwrap().clone().join("subvol");
+    Command::new("btrfs")
+        .args(["subvolume", "create"])
+        .arg(&subvol_path)
+        .call()
+        .unwrap();
+
+    let ret_path = libbtrfsutil::subvolume_path(subvol_path).unwrap();
+    assert_eq!(ret_path, PathBuf::from("subvol"));
 }

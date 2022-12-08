@@ -272,13 +272,13 @@ impl SubvolumeIterator {
     }
 }
 
-fn c_char_ptr_to_path(ptr: *mut std::os::raw::c_char) -> PathBuf {
-    let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
+/// The given pointer will be freed
+unsafe fn c_char_ptr_to_path(ptr: *mut std::os::raw::c_char) -> PathBuf {
+    let c_str = std::ffi::CStr::from_ptr(ptr);
     let os_str = OsStr::from_bytes(c_str.to_bytes());
     let ret = PathBuf::from(os_str);
-    unsafe {
-        libc::free(ptr as *mut libc::c_void);
-    }
+    libc::free(ptr as *mut libc::c_void);
+
     ret
 }
 
@@ -292,7 +292,7 @@ impl Iterator for SubvolumeIterator {
             unsafe { ffi::btrfs_util_subvolume_iterator_next(self.0, &mut path_ptr, &mut id) };
         match errcode {
             ffi::btrfs_util_error::BTRFS_UTIL_OK => {
-                let path = c_char_ptr_to_path(path_ptr);
+                let path = unsafe { c_char_ptr_to_path(path_ptr) };
                 Some(Ok((path, NonZeroU64::new(id).unwrap())))
             }
             ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION => None,
@@ -344,11 +344,36 @@ impl Iterator for SubvolumeInfoIterator {
         };
         match errcode {
             ffi::btrfs_util_error::BTRFS_UTIL_OK => {
-                let path = c_char_ptr_to_path(path_ptr);
+                let path = unsafe { c_char_ptr_to_path(path_ptr) };
                 Some(Ok((path, info)))
             }
             ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION => None,
             _ => Some(Err(Error::new(errcode))),
         }
+    }
+}
+
+/// Gets the path of the subvolume relative to the filesystem root.
+///
+/// This requires appropriate privilege (`CAP_SYS_ADMIN`).
+#[inline]
+pub fn subvolume_path<P: AsRef<Path>>(path: P) -> Result<PathBuf, Error> {
+    subvolume_path_with_id(path, 0)
+}
+
+/// Gets the path of the subvolume with a given ID relative to the filesystem root.
+///
+/// This requires appropriate privilege (`CAP_SYS_ADMIN`).
+pub fn subvolume_path_with_id<P: AsRef<Path>>(path: P, id: u64) -> Result<PathBuf, Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let mut ret_path_ptr: *mut std::os::raw::c_char = std::ptr::null_mut();
+    unsafe {
+        let errcode = ffi::btrfs_util_subvolume_path(cpath.as_ptr(), id, &mut ret_path_ptr);
+        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+            return Err(Error::new(errcode));
+        }
+        let path = c_char_ptr_to_path(ret_path_ptr);
+
+        Ok(path)
     }
 }
