@@ -71,6 +71,7 @@ pub fn subvolume_info_with_id<P: AsRef<Path>>(path: P, id: u64) -> Result<Subvol
 pub fn subvolume_info<P: AsRef<Path>>(path: P) -> Result<SubvolumeInfo, Error> {
     subvolume_info_with_id(path, 0)
 }
+
 /// Returns whether a subvolume is read-only.
 pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
@@ -79,6 +80,19 @@ pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let errcode = unsafe { ffi::btrfs_util_get_subvolume_read_only(cpath.as_ptr(), &mut ret) };
     if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
         Ok(ret)
+    } else {
+        Err(Error::new(errcode))
+    }
+}
+
+/// Set whether a subvolume is read-only.
+///
+/// This requires appropriate privilege (CAP_SYS_ADMIN).
+pub fn set_subvolume_read_only<P: AsRef<Path>>(path: P, read_only: bool) -> Result<(), Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let errcode = unsafe { ffi::btrfs_util_set_subvolume_read_only(cpath.as_ptr(), read_only) };
+    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
+        Ok(())
     } else {
         Err(Error::new(errcode))
     }
