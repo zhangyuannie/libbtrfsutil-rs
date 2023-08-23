@@ -11,7 +11,7 @@ repository = "https://github.com/zhangyuannie/libbtrfsutil-rs"
 members = ["libbtrfsutil-sys"]
 
 [dependencies]
-bitflags = "1"
+bitflags = "2"
 uuid = "1"
 libc = "0.2"
 

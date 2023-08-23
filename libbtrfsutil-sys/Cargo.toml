@@ -11,6 +11,6 @@ links = "btrfsutil"
 pkg-config = "0.3"
 
 [build-dependencies.bindgen]
-version = "0.60"
+version = "0.66"
 default-features = false
 features = ["logging", "runtime", "which-rustfmt"]

@@ -16,8 +16,7 @@ impl LoopDevice {
 
         assert!(status.success());
 
-        let output = Command::new("sudo")
-            .arg("losetup")
+        let output = Command::new("losetup")
             .arg("--show")
             .arg("--find")
             .arg(&path)
@@ -36,11 +35,7 @@ impl LoopDevice {
     pub fn mount(&mut self, path: PathBuf) -> io::Result<()> {
         assert!(self.mountpoint.is_none());
         fs::create_dir_all(&path)?;
-        let status = Command::new("sudo")
-            .arg("mount")
-            .arg(&self.name)
-            .arg(&path)
-            .status()?;
+        let status = Command::new("mount").arg(&self.name).arg(&path).status()?;
         assert!(status.success());
         self.mountpoint.replace(path);
         Ok(())
@@ -48,10 +43,7 @@ impl LoopDevice {
 
     pub fn umount(&mut self) -> io::Result<()> {
         let mount_path = self.mountpoint.as_ref().unwrap();
-        let status = Command::new("sudo")
-            .arg("umount")
-            .arg(mount_path)
-            .status()?;
+        let status = Command::new("umount").arg(mount_path).status()?;
         assert!(status.success());
         fs::remove_dir_all(mount_path)?;
         self.mountpoint.take();
@@ -72,8 +64,7 @@ impl Drop for LoopDevice {
         if self.mountpoint.is_some() {
             self.umount().unwrap();
         }
-        let status = Command::new("sudo")
-            .arg("losetup")
+        let status = Command::new("losetup")
             .arg("--detach")
             .arg(&self.name)
             .status()
@@ -116,13 +107,9 @@ impl CommandExt for Command {
     }
 }
 
-pub fn setup() -> LoopDevice {
-    let mut ret = LoopDevice::new(PathBuf::from("test_block"));
-    Command::new("sudo")
-        .arg("mkfs.btrfs")
-        .arg(ret.name())
-        .call()
-        .unwrap();
-    ret.mount(PathBuf::from("test_mount_dir")).unwrap();
+pub fn setup(device_path: PathBuf, mnt_dir: PathBuf) -> LoopDevice {
+    let mut ret = LoopDevice::new(device_path);
+    Command::new("mkfs.btrfs").arg(ret.name()).call().unwrap();
+    ret.mount(mnt_dir).unwrap();
     ret
 }

@@ -13,17 +13,20 @@ use crate::common::CommandExt;
 
 #[test]
 fn test_subvolume_info() {
-    let device = setup();
+    let device = setup(
+        "test_subvolume_info".into(),
+        "test_subvolume_info_dir".into(),
+    );
     let subvol_path = device.mountpoint().unwrap().clone().join("subvol");
-    Command::new("sudo")
-        .args(["btrfs", "subvolume", "create"])
+    Command::new("btrfs")
+        .args(["subvolume", "create"])
         .arg(&subvol_path)
         .call()
         .unwrap();
 
     let snapshot_path = device.mountpoint().unwrap().clone().join("snapshot");
-    Command::new("sudo")
-        .args(["btrfs", "subvolume", "snapshot"])
+    Command::new("btrfs")
+        .args(["subvolume", "snapshot"])
         .arg(&subvol_path)
         .arg(&snapshot_path)
         .call()
@@ -107,14 +110,17 @@ fn test_subvolume_info() {
 
 #[test]
 fn test_subvolume_path() {
-    let device = setup();
+    let device = setup(
+        "test_subvolume_path".into(),
+        "test_subvolume_path_dir".into(),
+    );
     let subvol_path = device.mountpoint().unwrap().clone().join("subvol");
-    Command::new("btrfs")
-        .args(["subvolume", "create"])
-        .arg(&subvol_path)
-        .call()
-        .unwrap();
-
+    libbtrfsutil::create_subvolume(
+        &subvol_path,
+        libbtrfsutil::CreateSubvolumeFlags::empty(),
+        None,
+    )
+    .unwrap();
     let ret_path = libbtrfsutil::subvolume_path(subvol_path).unwrap();
     assert_eq!(ret_path, PathBuf::from("subvol"));
 }
