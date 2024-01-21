@@ -130,6 +130,11 @@ impl DeleteSubvolumeOptions {
     }
 }
 
+/// Delete a subvolume. See [`DeleteSubvolumeOptions`] for more options.
+pub fn delete_subvolume<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    DeleteSubvolumeOptions::new().delete(path)
+}
+
 /// Options to create subvolumes
 pub struct CreateSubvolumeOptions {
     qgroup: Option<QgroupInherit>,
@@ -165,6 +170,11 @@ impl CreateSubvolumeOptions {
             Ok(())
         }
     }
+}
+
+/// Creates a new subvolume. See [`CreateSubvolumeOptions`] for more options.
+pub fn create_subvolume<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    CreateSubvolumeOptions::new().create(path)
 }
 
 /// Options to create snapshots
