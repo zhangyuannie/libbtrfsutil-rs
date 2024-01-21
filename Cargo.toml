@@ -1,6 +1,6 @@
 [package]
 name = "libbtrfsutil"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 license = "MIT"
 description = "libbtrfsutil bindings"
@@ -12,11 +12,10 @@ repository = "https://github.com/zhangyuannie/libbtrfsutil-rs"
 members = ["libbtrfsutil-sys"]
 
 [dependencies]
-bitflags = "2"
 uuid = "1"
 libc = "0.2"
 
 [dependencies.ffi]
 package = "libbtrfsutil-sys"
 path = "libbtrfsutil-sys"
-version = "0.1.0"
+version = "0.2.0"
