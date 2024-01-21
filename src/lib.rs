@@ -2,7 +2,6 @@ mod error;
 mod qgroup;
 mod subvol;
 
-use bitflags::bitflags;
 use std::{
     ffi::CString,
     os::{raw::c_int, unix::prelude::OsStrExt},
@@ -98,89 +97,141 @@ pub fn set_subvolume_read_only<P: AsRef<Path>>(path: P, read_only: bool) -> Resu
     }
 }
 
-bitflags! {
-    #[derive(Default)]
-    pub struct DeleteSubvolumeFlags: c_int {
-        const RECURSIVE = ffi::BTRFS_UTIL_DELETE_SUBVOLUME_RECURSIVE as c_int;
-    }
+/// Options to delete subvolumes
+pub struct DeleteSubvolumeOptions {
+    recursive: bool,
 }
 
-/// Deletes a subvolume or snapshot.
-pub fn delete_subvolume<P: AsRef<Path>>(path: P, flags: DeleteSubvolumeFlags) -> Result<(), Error> {
-    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
-    let cflags = flags.bits();
-    unsafe {
-        let errcode = ffi::btrfs_util_delete_subvolume(cpath.as_ptr(), cflags);
-        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-            return Err(Error::new(errcode));
+impl DeleteSubvolumeOptions {
+    pub fn new() -> Self {
+        Self { recursive: false }
+    }
+    /// When true, delete subvolumes beneath the given subvolume before
+    /// attempting to delete the given subvolume.
+    pub fn recursive(&mut self, recursive: bool) -> &mut Self {
+        self.recursive = recursive;
+        self
+    }
+
+    /// Deletes a subvolume or snapshot.
+    pub fn delete<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+        let mut flags: c_int = 0;
+        if self.recursive {
+            flags |= ffi::BTRFS_UTIL_DELETE_SUBVOLUME_RECURSIVE as c_int;
         }
-    }
-    Ok(())
-}
-
-bitflags! {
-    #[derive(Default)]
-    pub struct CreateSubvolumeFlags: c_int {}
-}
-
-/// Creates a new subvolume.
-pub fn create_subvolume<P: AsRef<Path>>(
-    path: P,
-    flags: CreateSubvolumeFlags,
-    qgroup: Option<QgroupInherit>,
-) -> Result<(), Error> {
-    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
-    let cflags = flags.bits();
-    let cqgroup: *mut ffi::btrfs_util_qgroup_inherit = if let Some(qg) = qgroup {
-        qg.as_ptr()
-    } else {
-        std::ptr::null_mut()
-    };
-    let errcode = unsafe {
-        ffi::btrfs_util_create_subvolume(cpath.as_ptr(), cflags, std::ptr::null_mut(), cqgroup)
-    };
-    if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-        Err(Error::new(errcode))
-    } else {
+        let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+        unsafe {
+            let errcode = ffi::btrfs_util_delete_subvolume(cpath.as_ptr(), flags);
+            if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+                return Err(Error::new(errcode));
+            }
+        }
         Ok(())
     }
 }
 
-bitflags! {
-    #[derive(Default)]
-    pub struct CreateSnapshotFlags: c_int {
-        const READ_ONLY	= ffi::BTRFS_UTIL_CREATE_SNAPSHOT_READ_ONLY as c_int;
-        const RECURSIVE = ffi::BTRFS_UTIL_CREATE_SNAPSHOT_RECURSIVE as c_int;
+/// Options to create subvolumes
+pub struct CreateSubvolumeOptions {
+    qgroup: Option<QgroupInherit>,
+}
+
+impl CreateSubvolumeOptions {
+    pub fn new() -> Self {
+        Self { qgroup: None }
+    }
+
+    pub fn qgroup(&mut self, qgroup: Option<QgroupInherit>) -> &mut Self {
+        self.qgroup = qgroup;
+        self
+    }
+
+    /// Creates a new subvolume.
+    pub fn create<P: AsRef<Path>>(&mut self, path: P) -> Result<(), Error> {
+        let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+        let flags: c_int = 0;
+
+        let cqgroup: *mut ffi::btrfs_util_qgroup_inherit = if let Some(qg) = &self.qgroup {
+            qg.as_ptr()
+        } else {
+            std::ptr::null_mut()
+        };
+
+        let errcode = unsafe {
+            ffi::btrfs_util_create_subvolume(cpath.as_ptr(), flags, std::ptr::null_mut(), cqgroup)
+        };
+        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+            Err(Error::new(errcode))
+        } else {
+            Ok(())
+        }
     }
 }
 
-/// Creates a new snapshot from a source subvolume.
-pub fn create_snapshot<P: AsRef<Path>, Q: AsRef<Path>>(
-    source: P,
-    path: Q,
-    flags: CreateSnapshotFlags,
+/// Options to create snapshots
+pub struct CreateSnapshotOptions {
     qgroup: Option<QgroupInherit>,
-) -> Result<(), Error> {
-    let csource = CString::new(source.as_ref().as_os_str().as_bytes()).unwrap();
-    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
-    let cflags = flags.bits();
-    let unused = std::ptr::null_mut();
-    let cqgroup: *mut ffi::btrfs_util_qgroup_inherit = if let Some(qg) = qgroup {
-        qg.as_ptr()
-    } else {
-        std::ptr::null_mut()
-    };
-    unsafe {
-        let errcode = ffi::btrfs_util_create_snapshot(
-            csource.as_ptr(),
-            cpath.as_ptr(),
-            cflags,
-            unused,
-            cqgroup,
-        );
-        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
-            return Err(Error::new(errcode));
+    readonly: bool,
+    recursive: bool,
+}
+
+impl CreateSnapshotOptions {
+    pub fn new() -> Self {
+        Self {
+            qgroup: None,
+            readonly: false,
+            recursive: false,
         }
     }
-    Ok(())
+
+    pub fn qgroup(&mut self, qgroup: Option<QgroupInherit>) -> &mut Self {
+        self.qgroup = qgroup;
+        self
+    }
+
+    pub fn readonly(&mut self, readonly: bool) -> &mut Self {
+        self.readonly = readonly;
+        self
+    }
+
+    pub fn recursive(&mut self, recursive: bool) -> &mut Self {
+        self.recursive = recursive;
+        self
+    }
+
+    /// Creates a new snapshot from a source subvolume.
+    pub fn create<P: AsRef<Path>, Q: AsRef<Path>>(
+        &mut self,
+        source: P,
+        path: Q,
+    ) -> Result<(), Error> {
+        let csource = CString::new(source.as_ref().as_os_str().as_bytes()).unwrap();
+        let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+
+        let mut flags: c_int = 0;
+        if self.readonly {
+            flags |= ffi::BTRFS_UTIL_CREATE_SNAPSHOT_READ_ONLY as c_int;
+        }
+        if self.recursive {
+            flags |= ffi::BTRFS_UTIL_CREATE_SNAPSHOT_RECURSIVE as c_int;
+        }
+
+        let cqgroup: *mut ffi::btrfs_util_qgroup_inherit = if let Some(qg) = &self.qgroup {
+            qg.as_ptr()
+        } else {
+            std::ptr::null_mut()
+        };
+        unsafe {
+            let errcode = ffi::btrfs_util_create_snapshot(
+                csource.as_ptr(),
+                cpath.as_ptr(),
+                flags,
+                std::ptr::null_mut(),
+                cqgroup,
+            );
+            if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+                return Err(Error::new(errcode));
+            }
+        }
+        Ok(())
+    }
 }

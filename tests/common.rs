@@ -1,4 +1,4 @@
-use std::{error::Error, fmt, fs, io, path::PathBuf, process::Command};
+use std::{error::Error, fmt, fs, io, path::PathBuf, process::Command, time::Duration};
 
 pub struct LoopDevice {
     path: PathBuf,
@@ -44,6 +44,9 @@ impl LoopDevice {
     pub fn umount(&mut self) -> io::Result<()> {
         let mount_path = self.mountpoint.as_ref().unwrap();
         let status = Command::new("umount").arg(mount_path).status()?;
+        if !status.success() {
+            return Err(io::ErrorKind::Other.into());
+        }
         assert!(status.success());
         fs::remove_dir_all(mount_path)?;
         self.mountpoint.take();
@@ -62,7 +65,10 @@ impl LoopDevice {
 impl Drop for LoopDevice {
     fn drop(&mut self) {
         if self.mountpoint.is_some() {
-            self.umount().unwrap();
+            if self.umount().is_err() {
+                std::thread::sleep(Duration::from_secs(1));
+                self.umount().unwrap();
+            }
         }
         let status = Command::new("losetup")
             .arg("--detach")
@@ -109,7 +115,11 @@ impl CommandExt for Command {
 
 pub fn setup(device_path: PathBuf, mnt_dir: PathBuf) -> LoopDevice {
     let mut ret = LoopDevice::new(device_path);
-    Command::new("mkfs.btrfs").arg(ret.name()).call().unwrap();
+    Command::new("mkfs.btrfs")
+        .arg("-f")
+        .arg(ret.name())
+        .call()
+        .unwrap();
     ret.mount(mnt_dir).unwrap();
     ret
 }

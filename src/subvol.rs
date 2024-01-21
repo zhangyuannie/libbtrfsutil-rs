@@ -7,10 +7,9 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use bitflags::bitflags;
 use uuid::Uuid;
 
-use crate::Error;
+use crate::{Error, FS_TREE_OBJECTID};
 
 /// Information about a Btrfs subvolume.
 #[derive(Debug, Clone)]
@@ -242,33 +241,78 @@ impl Default for SubvolumeInfo {
     }
 }
 
-pub struct SubvolumeIterator(*mut ffi::btrfs_util_subvolume_iterator);
+pub struct SubvolumeIdIterator(*mut ffi::btrfs_util_subvolume_iterator);
 
-bitflags! {
-    #[derive(Default)]
-    pub struct SubvolumeIteratorFlags: c_int {
-        const POST_ORDER = ffi::BTRFS_UTIL_SUBVOLUME_ITERATOR_POST_ORDER as c_int;
-    }
+/// A builder to create a subvolume iterator
+pub struct IterateSubvolume {
+    path: CString,
+    top: u64,
+    post_order: bool,
 }
 
-impl SubvolumeIterator {
-    pub fn new<P: AsRef<Path>>(
-        path: P,
-        top: Option<NonZeroU64>,
-        flags: SubvolumeIteratorFlags,
-    ) -> Result<Self, Error> {
-        let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
-        let ctop = top.map_or(0, |i| i.get());
-        let cflags = flags.bits();
+impl IterateSubvolume {
+    /// Path in a Btrfs filesystem. This may be any path in the filesystem; it
+    /// does not have to refer to a subvolume unless `top` is not provided.
+    /// If `top` is not provided, the subvolume ID of `path` is used.
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        Self {
+            path: CString::new(path.as_ref().as_os_str().as_bytes()).unwrap(),
+            top: 0,
+            post_order: false,
+        }
+    }
+
+    /// List subvolumes beneath (but not including) the subvolume with this ID.
+    /// The returned paths are relative to the subvolume with this ID.
+    pub fn top(&mut self, id: u64) -> &mut Self {
+        self.top = id;
+        self
+    }
+
+    // List all subvolumes.
+    // This basically sets `top` to `FS_TREE_OBJECTID`.
+    pub fn all(&mut self) -> &mut Self {
+        self.top = FS_TREE_OBJECTID;
+        self
+    }
+
+    /// Use post order traversal
+    pub fn post_order(&mut self) -> &mut Self {
+        self.post_order = true;
+        self
+    }
+
+    /// Use pre order traversal (default)
+    pub fn pre_order(&mut self) -> &mut Self {
+        self.post_order = false;
+        self
+    }
+
+    /// Returns an iterator to iterate over subvolume IDs
+    pub fn iter_with_id(&self) -> Result<SubvolumeIdIterator, Error> {
+        let mut flags: c_int = 0;
+        if self.post_order {
+            flags |= ffi::BTRFS_UTIL_SUBVOLUME_ITERATOR_POST_ORDER as c_int;
+        }
+
         let mut iter: *mut ffi::btrfs_util_subvolume_iterator = ptr::null_mut();
         unsafe {
-            let errcode =
-                ffi::btrfs_util_create_subvolume_iterator(cpath.as_ptr(), ctop, cflags, &mut iter);
+            let errcode = ffi::btrfs_util_create_subvolume_iterator(
+                self.path.as_ptr(),
+                self.top,
+                flags,
+                &mut iter,
+            );
             if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
                 return Err(Error::new(errcode));
             }
         }
-        Ok(SubvolumeIterator(iter))
+        Ok(SubvolumeIdIterator(iter))
+    }
+
+    /// Returns an iterator to iterate over subvolume info
+    pub fn iter_with_info(&self) -> Result<SubvolumeInfoIterator, Error> {
+        Ok(self.iter_with_id()?.into())
     }
 }
 
@@ -282,7 +326,7 @@ unsafe fn c_char_ptr_to_path(ptr: *mut std::os::raw::c_char) -> PathBuf {
     ret
 }
 
-impl Iterator for SubvolumeIterator {
+impl Iterator for SubvolumeIdIterator {
     type Item = Result<(PathBuf, NonZeroU64), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -301,7 +345,7 @@ impl Iterator for SubvolumeIterator {
     }
 }
 
-impl Drop for SubvolumeIterator {
+impl Drop for SubvolumeIdIterator {
     fn drop(&mut self) {
         unsafe {
             ffi::btrfs_util_destroy_subvolume_iterator(self.0);
@@ -309,29 +353,19 @@ impl Drop for SubvolumeIterator {
     }
 }
 
-impl From<SubvolumeInfoIterator> for SubvolumeIterator {
+impl From<SubvolumeInfoIterator> for SubvolumeIdIterator {
     fn from(iter: SubvolumeInfoIterator) -> Self {
         iter.0
     }
 }
 
-impl From<SubvolumeIterator> for SubvolumeInfoIterator {
-    fn from(iter: SubvolumeIterator) -> Self {
+impl From<SubvolumeIdIterator> for SubvolumeInfoIterator {
+    fn from(iter: SubvolumeIdIterator) -> Self {
         Self(iter)
     }
 }
 
-pub struct SubvolumeInfoIterator(SubvolumeIterator);
-
-impl SubvolumeInfoIterator {
-    pub fn new<P: AsRef<Path>>(
-        path: P,
-        top: Option<NonZeroU64>,
-        flags: SubvolumeIteratorFlags,
-    ) -> Result<Self, Error> {
-        SubvolumeIterator::new(path, top, flags).map(|iter| Self(iter))
-    }
-}
+pub struct SubvolumeInfoIterator(SubvolumeIdIterator);
 
 impl Iterator for SubvolumeInfoIterator {
     type Item = Result<(PathBuf, SubvolumeInfo), Error>;

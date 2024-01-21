@@ -1,9 +1,11 @@
-use libbtrfsutil::{SubvolumeInfoIterator, SubvolumeIteratorFlags};
+use libbtrfsutil::IterateSubvolume;
 
 fn main() {
-    let iter = SubvolumeInfoIterator::new("/", None, SubvolumeIteratorFlags::default()).unwrap();
-    for subvol in iter {
-        let (path, info) = subvol.unwrap();
+    for (path, info) in IterateSubvolume::new("/")
+        .iter_with_info()
+        .unwrap()
+        .filter_map(|s| s.ok())
+    {
         println!(
             "ID {} gen {} top level {} path {}",
             info.id(),

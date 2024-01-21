@@ -1,15 +1,12 @@
 mod common;
 
 use common::setup;
-use libbtrfsutil::subvolume_info;
+use libbtrfsutil::{subvolume_info, subvolume_read_only};
 use std::{
     num::NonZeroU64,
     path::PathBuf,
-    process::Command,
     time::{Duration, SystemTime},
 };
-
-use crate::common::CommandExt;
 
 #[test]
 fn test_subvolume_info() {
@@ -18,18 +15,14 @@ fn test_subvolume_info() {
         "test_subvolume_info_dir".into(),
     );
     let subvol_path = device.mountpoint().unwrap().clone().join("subvol");
-    Command::new("btrfs")
-        .args(["subvolume", "create"])
-        .arg(&subvol_path)
-        .call()
+    libbtrfsutil::CreateSubvolumeOptions::new()
+        .create(&subvol_path)
         .unwrap();
 
     let snapshot_path = device.mountpoint().unwrap().clone().join("snapshot");
-    Command::new("btrfs")
-        .args(["subvolume", "snapshot"])
-        .arg(&subvol_path)
-        .arg(&snapshot_path)
-        .call()
+    libbtrfsutil::CreateSnapshotOptions::new()
+        .readonly(true)
+        .create(&subvol_path, &snapshot_path)
         .unwrap();
 
     let root_info = subvolume_info(device.mountpoint().unwrap()).unwrap();
@@ -102,10 +95,13 @@ fn test_subvolume_info() {
     );
     assert_eq!(subvol_info.received(), None);
 
-    let snapshot_info = subvolume_info(snapshot_path).unwrap();
+    let snapshot_info = subvolume_info(&snapshot_path).unwrap();
     assert_eq!(snapshot_info.parent_id(), NonZeroU64::new(5));
     assert_eq!(snapshot_info.dir_id(), NonZeroU64::new(256));
     assert_eq!(snapshot_info.parent_uuid(), Some(subvol_info.uuid()));
+
+    let is_readonly = subvolume_read_only(&snapshot_path).unwrap();
+    assert_eq!(is_readonly, true);
 }
 
 #[test]
@@ -115,12 +111,9 @@ fn test_subvolume_path() {
         "test_subvolume_path_dir".into(),
     );
     let subvol_path = device.mountpoint().unwrap().clone().join("subvol");
-    libbtrfsutil::create_subvolume(
-        &subvol_path,
-        libbtrfsutil::CreateSubvolumeFlags::empty(),
-        None,
-    )
-    .unwrap();
+    libbtrfsutil::CreateSubvolumeOptions::new()
+        .create(&subvol_path)
+        .unwrap();
     let ret_path = libbtrfsutil::subvolume_path(subvol_path).unwrap();
     assert_eq!(ret_path, PathBuf::from("subvol"));
 }

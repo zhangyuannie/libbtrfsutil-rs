@@ -4,6 +4,7 @@ version = "0.6.0"
 edition = "2021"
 license = "MIT"
 description = "libbtrfsutil bindings"
+keywords = ["btrfs", "btrfsutil", "ffi"]
 readme = "README.md"
 repository = "https://github.com/zhangyuannie/libbtrfsutil-rs"
 

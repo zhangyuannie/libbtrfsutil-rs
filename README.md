@@ -11,5 +11,13 @@ Rust bindings for [libbtrfsutil](https://github.com/kdave/btrfs-progs/tree/maste
 To install them on Fedora:
 
 ```
-# dnf install clang-devel "pkgconfig(libbtrfsutil)"
+# dnf install clang "pkgconfig(libbtrfsutil)"
+```
+
+## Development
+
+Run test:
+
+```
+$ CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER='sudo -E' cargo test
 ```
