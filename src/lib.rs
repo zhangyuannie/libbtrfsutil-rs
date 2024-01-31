@@ -8,7 +8,7 @@ use std::{
     path::Path,
 };
 
-pub use error::Error;
+pub use error::{Error, ErrorKind};
 pub use qgroup::QgroupInherit;
 pub use subvol::*;
 pub const FS_TREE_OBJECTID: u64 = 5;
