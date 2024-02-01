@@ -6,14 +6,23 @@ use std::path::PathBuf;
 
 fn main() {
     // try with pkg-config, it will handle cargo output on success
-    if pkg_config::probe_library("libbtrfsutil").is_err() {
-        // otherwise assume the default and hope for the best
-        println!("cargo:rustc-link-lib=btrfsutil");
-    }
+    let include_paths = match pkg_config::probe_library("libbtrfsutil") {
+        Ok(lib) => lib.include_paths,
+        Err(_) => {
+            // otherwise assume the default and hope for the best
+            println!("cargo:rustc-link-lib=btrfsutil");
+            vec![]
+        }
+    };
 
     println!("cargo:rerun-if-changed=wrapper.h");
 
+    let clang_args = include_paths
+        .iter()
+        .map(|path| format!("-I{}", path.to_string_lossy()));
+
     let bindings = bindgen::Builder::default()
+        .clang_args(clang_args)
         .header("wrapper.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .default_enum_style(bindgen::EnumVariation::ModuleConsts)
