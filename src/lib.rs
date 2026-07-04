@@ -47,6 +47,40 @@ pub fn subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     }
 }
 
+/// Gets the default subvolume ID for the filesystem containing the `path`.
+///
+/// This requires appropriate privilege (`CAP_SYS_ADMIN`).
+pub fn default_subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let mut ret: u64 = 0;
+    let errcode = unsafe { ffi::btrfs_util_subvolume_get_default(cpath.as_ptr(), &mut ret) };
+    if errcode == ErrorKind::OK {
+        Ok(ret)
+    } else {
+        Err(Error::new(errcode))
+    }
+}
+
+/// Sets the subvolume at `path` as the default subvolume.
+///
+/// This requires appropriate privilege (`CAP_SYS_ADMIN`).
+pub fn set_default_subvolume<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    set_default_subvolume_with_id(path, 0)
+}
+
+/// Sets the default subvolume by ID for the filesystem containing the `path`.
+///
+/// This requires appropriate privilege (`CAP_SYS_ADMIN`).
+pub fn set_default_subvolume_with_id<P: AsRef<Path>>(path: P, id: u64) -> Result<(), Error> {
+    let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
+    let errcode = unsafe { ffi::btrfs_util_subvolume_set_default(cpath.as_ptr(), id) };
+    if errcode == ErrorKind::OK {
+        Ok(())
+    } else {
+        Err(Error::new(errcode))
+    }
+}
+
 /// Gets information about the subvolume with the given `id` on the filesystem containing the `path`.
 ///
 /// This requires appropriate privilege (`CAP_SYS_ADMIN`).

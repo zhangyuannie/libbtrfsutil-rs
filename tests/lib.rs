@@ -1,7 +1,10 @@
 mod common;
 
 use common::setup;
-use libbtrfsutil::{subvolume_info, subvolume_read_only};
+use libbtrfsutil::{
+    default_subvolume_id, set_default_subvolume, set_default_subvolume_with_id, subvolume_info,
+    subvolume_read_only,
+};
 use std::{
     num::NonZeroU64,
     path::PathBuf,
@@ -116,4 +119,26 @@ fn test_subvolume_path() {
         .unwrap();
     let ret_path = libbtrfsutil::subvolume_path(subvol_path).unwrap();
     assert_eq!(ret_path, PathBuf::from("subvol"));
+}
+
+#[test]
+fn test_default_subvolume() {
+    let device = setup(
+        "test_default_subvolume".into(),
+        "test_default_subvolume_dir".into(),
+    );
+    let mountpoint = device.mountpoint().unwrap();
+    assert_eq!(default_subvolume_id(mountpoint).unwrap(), 5);
+
+    let subvol_path = mountpoint.join("subvol");
+    libbtrfsutil::CreateSubvolumeOptions::new()
+        .create(&subvol_path)
+        .unwrap();
+    let subvol_id = libbtrfsutil::subvolume_id(&subvol_path).unwrap();
+
+    set_default_subvolume(&subvol_path).unwrap();
+    assert_eq!(default_subvolume_id(mountpoint).unwrap(), subvol_id);
+
+    set_default_subvolume_with_id(mountpoint, 5).unwrap();
+    assert_eq!(default_subvolume_id(mountpoint).unwrap(), 5);
 }
