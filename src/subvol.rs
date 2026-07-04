@@ -230,7 +230,7 @@ impl SubvolumeInfo {
         if self.0.rtime.tv_sec == 0 && self.0.rtime.tv_nsec == 0 {
             None
         } else {
-            Some(Timespec(self.0.ctime).into())
+            Some(Timespec(self.0.rtime).into())
         }
     }
 }
