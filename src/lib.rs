@@ -17,7 +17,7 @@ pub const FS_TREE_OBJECTID: u64 = 5;
 pub fn sync<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let errcode = unsafe { ffi::btrfs_util_sync(cpath.as_ptr()) };
-    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
+    if errcode == ErrorKind::OK {
         Ok(())
     } else {
         Err(Error::new(errcode))
@@ -29,9 +29,8 @@ pub fn is_subvolume<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let errcode = unsafe { ffi::btrfs_util_is_subvolume(cpath.as_ptr()) };
     match errcode {
-        ffi::btrfs_util_error::BTRFS_UTIL_OK => Ok(true),
-        ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_SUBVOLUME
-        | ffi::btrfs_util_error::BTRFS_UTIL_ERROR_NOT_BTRFS => Ok(false),
+        ErrorKind::OK => Ok(true),
+        ErrorKind::NOT_SUBVOLUME | ErrorKind::NOT_BTRFS => Ok(false),
         _ => Err(Error::new(errcode)),
     }
 }
@@ -41,7 +40,7 @@ pub fn subvolume_id<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let mut ret: u64 = 0;
     let errcode = unsafe { ffi::btrfs_util_subvolume_id(cpath.as_ptr(), &mut ret) };
-    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
+    if errcode == ErrorKind::OK {
         Ok(ret)
     } else {
         Err(Error::new(errcode))
@@ -56,7 +55,7 @@ pub fn subvolume_info_with_id<P: AsRef<Path>>(path: P, id: u64) -> Result<Subvol
     let mut out = SubvolumeInfo::new();
     unsafe {
         let errcode = ffi::btrfs_util_subvolume_info(cpath.as_ptr(), id, out.as_ptr());
-        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+        if errcode != ErrorKind::OK {
             return Err(Error::new(errcode));
         }
     }
@@ -77,7 +76,7 @@ pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let mut ret: bool = false;
 
     let errcode = unsafe { ffi::btrfs_util_get_subvolume_read_only(cpath.as_ptr(), &mut ret) };
-    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
+    if errcode == ErrorKind::OK {
         Ok(ret)
     } else {
         Err(Error::new(errcode))
@@ -90,7 +89,7 @@ pub fn subvolume_read_only<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
 pub fn set_subvolume_read_only<P: AsRef<Path>>(path: P, read_only: bool) -> Result<(), Error> {
     let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
     let errcode = unsafe { ffi::btrfs_util_set_subvolume_read_only(cpath.as_ptr(), read_only) };
-    if errcode == ffi::btrfs_util_error::BTRFS_UTIL_OK {
+    if errcode == ErrorKind::OK {
         Ok(())
     } else {
         Err(Error::new(errcode))
@@ -98,6 +97,7 @@ pub fn set_subvolume_read_only<P: AsRef<Path>>(path: P, read_only: bool) -> Resu
 }
 
 /// Options to delete subvolumes
+#[derive(Debug, Default)]
 pub struct DeleteSubvolumeOptions {
     recursive: bool,
 }
@@ -122,7 +122,7 @@ impl DeleteSubvolumeOptions {
         let cpath = CString::new(path.as_ref().as_os_str().as_bytes()).unwrap();
         unsafe {
             let errcode = ffi::btrfs_util_delete_subvolume(cpath.as_ptr(), flags);
-            if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+            if errcode != ErrorKind::OK {
                 return Err(Error::new(errcode));
             }
         }
@@ -136,6 +136,7 @@ pub fn delete_subvolume<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 }
 
 /// Options to create subvolumes
+#[derive(Debug, Default)]
 pub struct CreateSubvolumeOptions {
     qgroup: Option<QgroupInherit>,
 }
@@ -164,7 +165,7 @@ impl CreateSubvolumeOptions {
         let errcode = unsafe {
             ffi::btrfs_util_create_subvolume(cpath.as_ptr(), flags, std::ptr::null_mut(), cqgroup)
         };
-        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+        if errcode != ErrorKind::OK {
             Err(Error::new(errcode))
         } else {
             Ok(())
@@ -178,6 +179,7 @@ pub fn create_subvolume<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 }
 
 /// Options to create snapshots
+#[derive(Debug, Default)]
 pub struct CreateSnapshotOptions {
     qgroup: Option<QgroupInherit>,
     readonly: bool,
@@ -238,7 +240,7 @@ impl CreateSnapshotOptions {
                 std::ptr::null_mut(),
                 cqgroup,
             );
-            if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+            if errcode != ErrorKind::OK {
                 return Err(Error::new(errcode));
             }
         }

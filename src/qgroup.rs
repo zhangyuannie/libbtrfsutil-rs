@@ -1,8 +1,9 @@
 use std::{ptr, slice};
 
-use crate::Error;
+use crate::{Error, ErrorKind};
 
 /// qgroup inheritance specifier.
+#[derive(Debug)]
 pub struct QgroupInherit(*mut ffi::btrfs_util_qgroup_inherit);
 
 impl QgroupInherit {
@@ -10,7 +11,7 @@ impl QgroupInherit {
         let mut ret: *mut ffi::btrfs_util_qgroup_inherit = ptr::null_mut();
 
         let errcode = unsafe { ffi::btrfs_util_create_qgroup_inherit(0, &mut ret) };
-        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+        if errcode != ErrorKind::OK {
             Err(Error::new(errcode))
         } else {
             Ok(QgroupInherit(ret))
@@ -23,7 +24,7 @@ impl QgroupInherit {
 
         let errcode = unsafe { ffi::btrfs_util_qgroup_inherit_add_group(&mut ptr, qgroup_id) };
 
-        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+        if errcode != ErrorKind::OK {
             Err(Error::new(errcode))
         } else {
             self.0 = ptr;

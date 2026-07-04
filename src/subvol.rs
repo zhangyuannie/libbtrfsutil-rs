@@ -9,7 +9,7 @@ use std::{
 
 use uuid::Uuid;
 
-use crate::{Error, FS_TREE_OBJECTID};
+use crate::{Error, ErrorKind, FS_TREE_OBJECTID};
 
 /// Information about a Btrfs subvolume.
 #[derive(Debug, Clone)]
@@ -303,7 +303,7 @@ impl IterateSubvolume {
                 flags,
                 &mut iter,
             );
-            if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+            if errcode != ErrorKind::OK {
                 return Err(Error::new(errcode));
             }
         }
@@ -335,11 +335,11 @@ impl Iterator for SubvolumeIdIterator {
         let errcode =
             unsafe { ffi::btrfs_util_subvolume_iterator_next(self.0, &mut path_ptr, &mut id) };
         match errcode {
-            ffi::btrfs_util_error::BTRFS_UTIL_OK => {
+            ErrorKind::OK => {
                 let path = unsafe { c_char_ptr_to_path(path_ptr) };
                 Some(Ok((path, NonZeroU64::new(id).unwrap())))
             }
-            ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION => None,
+            ErrorKind::STOP_ITERATION => None,
             _ => Some(Err(Error::new(errcode))),
         }
     }
@@ -377,11 +377,11 @@ impl Iterator for SubvolumeInfoIterator {
             ffi::btrfs_util_subvolume_iterator_next_info(self.0 .0, &mut path_ptr, &mut info.0)
         };
         match errcode {
-            ffi::btrfs_util_error::BTRFS_UTIL_OK => {
+            ErrorKind::OK => {
                 let path = unsafe { c_char_ptr_to_path(path_ptr) };
                 Some(Ok((path, info)))
             }
-            ffi::btrfs_util_error::BTRFS_UTIL_ERROR_STOP_ITERATION => None,
+            ErrorKind::STOP_ITERATION => None,
             _ => Some(Err(Error::new(errcode))),
         }
     }
@@ -403,7 +403,7 @@ pub fn subvolume_path_with_id<P: AsRef<Path>>(path: P, id: u64) -> Result<PathBu
     let mut ret_path_ptr: *mut std::os::raw::c_char = std::ptr::null_mut();
     unsafe {
         let errcode = ffi::btrfs_util_subvolume_path(cpath.as_ptr(), id, &mut ret_path_ptr);
-        if errcode != ffi::btrfs_util_error::BTRFS_UTIL_OK {
+        if errcode != ErrorKind::OK {
             return Err(Error::new(errcode));
         }
         let path = c_char_ptr_to_path(ret_path_ptr);
